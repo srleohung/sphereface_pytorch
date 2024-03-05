@@ -101,3 +101,8 @@ ENV/
 .mypy_cache/
 
 *.pth
+
+# dataset
+lfw
+lfw.tgz
+lfw.zip
