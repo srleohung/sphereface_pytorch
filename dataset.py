@@ -5,6 +5,7 @@ import random
 import numpy as np
 import ctypes
 from multiprocessing import Process,Queue,Array
+from tqdm import tqdm
 
 
 def numpy_to_share(index,image,label,nparrimage,nparrlabel):
@@ -56,8 +57,8 @@ class ImageDataset(object):
 
         self.arrimage = Array(ctypes.c_float, 10*bs*3*imagesize*imagesize)
         self.arrlabel = Array(ctypes.c_float, 10*bs*3*imagesize*imagesize)
-        self.nparrimage = np.frombuffer(self.arrimage.get_obj(),np.float32).reshape(10,len(self.arrimage)/10)
-        self.nparrlabel = np.frombuffer(self.arrlabel.get_obj(),np.float32).reshape(10,len(self.arrlabel)/10)
+        self.nparrimage = np.frombuffer(self.arrimage.get_obj(),np.float32).reshape(10,len(self.arrimage)//10)
+        self.nparrlabel = np.frombuffer(self.arrlabel.get_obj(),np.float32).reshape(10,len(self.arrlabel)//10)
 
         self.filelist = Queue()
         self.result   = Queue()
@@ -96,17 +97,20 @@ class ImageDataset(object):
 
         self.imagenum = len(self.flist)
         if self.shuffle: random.shuffle(self.flist)
-        for filepath in self.flist:
+        for filepath in tqdm(self.flist):
             self.filelist.put(filepath)
             if maxlistnum is not None: maxlistnum -= 1
             if maxlistnum==0: break 
-
+        
         for i in range(nthread):
             self.filelist.put('FINISH')
             p = Process(target=dataset_handle, args=(self.name,self.filelist,self.result,self.callback,self.bs,i,
                             self.freearr,self.arrimage,self.arrlabel,self.zfile))
             p.start()
-
+    
+    def length(self):
+        return self.imagenum
+    
     def get(self):
         while True:
             index,imageshape,labelshape,pathlist = self.result.get()
